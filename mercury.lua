@@ -1076,22 +1076,21 @@ function Library:create(options)
 	})
 
 	do
-		local sec = changelogTab:section{Name = "2026-04-12"}
-		sec:label{Text = "Theme: Frost (glass)", Description = "Optional SlotTransparency on a theme tints Main/Secondary panels; see Library.Themes.Frost. No ColorSequence."}
-		sec:label{Text = "Tab bar: drag to reorder", Description = "Reorder uses Heartbeat + LayoutOrder; scrolling pauses while dragging. Icon/title no longer steal clicks from the tab button."}
-		sec:label{Text = "Window drag vs tab strip", Description = "Clicks on the tab strip no longer start moving the whole window."}
-		sec:label{Text = "Hello, world", Description = "Placeholder release notes for the UI shell."}
-		sec:label{Text = "Another line", Description = "Nothing to see here yet."}
+		local sec = changelogTab:section{Name = "2026-04-14"}
+		sec:label{Text = "1 new theme: Frost", Description = "kinda ass theme but im trying transparency shit"}
+		sec:label{Text = "draggable tabs", Description = "Added functionality to drag tabs to reorder them"}
+		sec:label{Text = "Changelog tab", Description = "FINALLY added a changelog tab"}
+		sec:label{Text = "Another line", Description = "doing shit with my own repo now crazy things in store"}
 	end
 
 	do
 		local sec = changelogTab:section{Name = "2026-03-01"}
-		sec:label{Text = "Hello, world (again)", Description = "Fake date, fake entry — swap with real notes later."}
+		sec:label{Text = "test", Description = "nothing happened here btw"}
 	end
 
 	do
 		local sec = changelogTab:section{Name = "2026-01-15"}
-		sec:label{Text = "Initial hello", Description = "hello world x3"}
+		sec:label{Text = "test, Description = "hello world x3"}
 	end
 
 	local settingsTab = Library.tab(mt, {
