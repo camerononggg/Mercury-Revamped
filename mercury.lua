@@ -38,27 +38,12 @@ local Library = {
 		glassContainer.Name = "GlassBlurContainer"
 		glassContainer.Size = UDim2.fromScale(1, 1)
 		glassContainer.BackgroundTransparency = 1
-		glassContainer.ZIndex = -1
 		glassContainer.Parent = frame.AbsoluteObject
 
 		local uic = frame.AbsoluteObject:FindFirstChildOfClass("UICorner")
 		if uic then
 			uic:Clone().Parent = glassContainer
 		end
-
-		-- The "Frost" physical material (noise)
-		local noise = Instance.new("ImageLabel")
-		noise.Name = "GlassNoise"
-		noise.Size = UDim2.fromScale(1, 1)
-		noise.BackgroundTransparency = 1
-		noise.Image = "rbxassetid://15543026117" -- High quality frost noise
-		noise.ImageTransparency = theme.NoiseTransparency or 0.94
-		noise.ImageColor3 = Color3.fromRGB(255, 255, 255)
-		noise.ScaleType = Enum.ScaleType.Tile
-		noise.TileSize = UDim2.fromOffset(256, 256)
-		noise.ZIndex = 0
-		noise.Parent = glassContainer
-		if uic then uic:Clone().Parent = noise end
 
 		-- Sophisticated Layering: prevent "double darkening" by using CanvasGroup with GroupTransparency
 		-- or using a purely additive highlight for inner frames.
@@ -69,9 +54,21 @@ local Library = {
 			depth.Size = UDim2.fromScale(1, 1)
 			depth.BackgroundColor3 = theme.Main
 			depth.BackgroundTransparency = theme.SlotTransparency.Main or 0.45
-			depth.ZIndex = -1
 			depth.Parent = glassContainer
 			if uic then uic:Clone().Parent = depth end
+			
+			-- The "Frost" physical material (noise)
+			local noise = Instance.new("ImageLabel")
+			noise.Name = "GlassNoise"
+			noise.Size = UDim2.fromScale(1, 1)
+			noise.BackgroundTransparency = 1
+			noise.Image = "rbxassetid://15543026117" -- High quality frost noise
+			noise.ImageTransparency = theme.NoiseTransparency or 0.94
+			noise.ImageColor3 = Color3.fromRGB(255, 255, 255)
+			noise.ScaleType = Enum.ScaleType.Tile
+			noise.TileSize = UDim2.fromOffset(256, 256)
+			noise.Parent = glassContainer
+			if uic then uic:Clone().Parent = noise end
 			
 			-- Add a subtle inner light (UIGradient) to simulate glass edges instead of a stroke
 			local highlight = Instance.new("Frame")
@@ -79,7 +76,6 @@ local Library = {
 			highlight.Size = UDim2.fromScale(1, 1)
 			highlight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 			highlight.BackgroundTransparency = 1 - (theme.HighlightIntensity or 0.08)
-			highlight.ZIndex = 1
 			highlight.Parent = glassContainer
 			
 			local gradient = Instance.new("UIGradient")
@@ -100,9 +96,21 @@ local Library = {
 			depth.Size = UDim2.fromScale(1, 1)
 			depth.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 			depth.BackgroundTransparency = theme.SlotTransparency.Secondary or 0.8
-			depth.ZIndex = -1
 			depth.Parent = glassContainer
 			if uic then uic:Clone().Parent = depth end
+			
+			-- Optional noise for secondary panels, kept very subtle
+			local noise = Instance.new("ImageLabel")
+			noise.Name = "GlassNoise"
+			noise.Size = UDim2.fromScale(1, 1)
+			noise.BackgroundTransparency = 1
+			noise.Image = "rbxassetid://15543026117"
+			noise.ImageTransparency = 0.98
+			noise.ImageColor3 = Color3.fromRGB(255, 255, 255)
+			noise.ScaleType = Enum.ScaleType.Tile
+			noise.TileSize = UDim2.fromOffset(256, 256)
+			noise.Parent = glassContainer
+			if uic then uic:Clone().Parent = noise end
 		end
 
 		return glassContainer
@@ -356,10 +364,29 @@ function Library:object(class, properties)
 
 	function methods:round(radius)
 		radius = radius or 6
-		Library:object("UICorner", {
+		local uic = Library:object("UICorner", {
 			Parent = localObject,
 			CornerRadius = UDim.new(0, radius)
 		})
+		
+		-- Also apply to GlassContainer if it exists
+		local glass = rawget(methods, "GlassContainer")
+		if glass then
+			uic.AbsoluteObject:Clone().Parent = glass
+			if glass:FindFirstChild("GlassDepth") then
+				uic.AbsoluteObject:Clone().Parent = glass.GlassDepth
+			end
+			if glass:FindFirstChild("GlassDepthSecondary") then
+				uic.AbsoluteObject:Clone().Parent = glass.GlassDepthSecondary
+			end
+			if glass:FindFirstChild("GlassNoise") then
+				uic.AbsoluteObject:Clone().Parent = glass.GlassNoise
+			end
+			if glass:FindFirstChild("GlassHighlight") then
+				uic.AbsoluteObject:Clone().Parent = glass.GlassHighlight
+			end
+		end
+		
 		return methods
 	end
 
@@ -950,14 +977,14 @@ function Library:create(options)
 	local shadowHolder = core:object("Frame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
-		ZIndex = 0
+		ZIndex = -5
 	})
 
 	local shadow = shadowHolder:object("ImageLabel", {
 		Centered = true,
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 47,1, 47),
-		ZIndex = 0,
+		ZIndex = -5,
 		Image = "rbxassetid://6015897843",
 		ImageColor3 = Color3.new(0, 0, 0),
 		ImageTransparency = .6,
