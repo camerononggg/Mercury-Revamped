@@ -143,6 +143,7 @@ end
 
 function Library:change_theme(toTheme)
 	Library.CurrentTheme = toTheme
+	local isFrost = (toTheme == Library.Themes.Frost)
 	local c = self:lighten(toTheme.Tertiary, 20)
 	Library.DisplayName.Text = "Welcome, <font color='rgb(" ..  math.floor(c.R*255) .. "," .. math.floor(c.G*255) .. "," .. math.floor(c.B*255) .. ")'> <b>" .. LocalPlayer.DisplayName .. "</b> </font>"
 	for color, objects in next, Library.ThemeObjects do
@@ -163,11 +164,48 @@ function Library:change_theme(toTheme)
 	for _, entry in ipairs(Library.ThemeTransparencyObjects) do
 		local element, themeKey = entry[1], entry[2]
 		local trans = (st and st[themeKey] ~= nil) and st[themeKey] or 0
+		
+		-- In Frost theme, elements inside the CanvasGroup shouldn't be transparent
+		-- to avoid double darkening, except the GroupTransparency of the main CanvasGroup itself.
+		if isFrost then
+			trans = 0
+		end
+		
 		element:tween({BackgroundTransparency = trans})
 	end
 	if Library.mainFrame then
 		local mainTrans = (st and st.Main ~= nil) and st.Main or 0
-		Library.mainFrame:tween({BackgroundTransparency = mainTrans})
+		if isFrost then
+			-- Frost uses GroupTransparency on the main CanvasGroup
+			Library.mainFrame:tween({GroupTransparency = mainTrans})
+			Library.mainFrame:tween({BackgroundTransparency = 0})
+			
+			local absFrame = Library.mainFrame.AbsoluteObject
+			local existingGlass = absFrame:FindFirstChild("_GlassGradient")
+			if not existingGlass then
+				local grad = Instance.new("UIGradient")
+				grad.Name = "_GlassGradient"
+				grad.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+					ColorSequenceKeypoint.new(1, Color3.new(0.8,0.9,1))
+				}
+				grad.Rotation = 45
+				grad.Transparency = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.85),
+					NumberSequenceKeypoint.new(0.5, 0.95),
+					NumberSequenceKeypoint.new(1, 0.85)
+				}
+				grad.Parent = absFrame
+			end
+		else
+			-- Not Frost
+			Library.mainFrame:tween({GroupTransparency = 0})
+			Library.mainFrame:tween({BackgroundTransparency = mainTrans})
+			
+			local absFrame = Library.mainFrame.AbsoluteObject
+			local existingGlass = absFrame:FindFirstChild("_GlassGradient")
+			if existingGlass then existingGlass:Destroy() end
+		end
 	end
 end
 
@@ -273,6 +311,7 @@ function Library:object(class, properties)
 	end
 
 	function methods:stroke(color, thickness, strokeMode)
+		if Library.CurrentTheme == Library.Themes.Frost then return methods end
 
 		thickness = thickness or 1
 		strokeMode = strokeMode or Enum.ApplyStrokeMode.Border
@@ -600,7 +639,7 @@ function Library:create(options)
 		VerticalAlignment = Enum.VerticalAlignment.Bottom
 	})
 
-	local core = gui:object("Frame", {
+	local core = gui:object("CanvasGroup", {
 		Size = UDim2.new(),
 		Theme = {BackgroundColor3 = "Main"},
 		Centered = true,
