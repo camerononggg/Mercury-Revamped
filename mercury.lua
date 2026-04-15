@@ -30,8 +30,8 @@ local Mouse = LocalPlayer:GetMouse()
 local HTTPService = game:GetService("HttpService")
 
 local Library = {
-	_glassBlur = function(frame, isSecondary)
-		local isGlass = Library.CurrentTheme and Library.CurrentTheme.Glass
+	_glassBlur = function(frame, isSecondary, theme)
+		local isGlass = theme and theme.Glass
 		if not isGlass then return nil end
 
 		local glassContainer = Instance.new("Frame")
@@ -52,7 +52,7 @@ local Library = {
 		noise.Size = UDim2.fromScale(1, 1)
 		noise.BackgroundTransparency = 1
 		noise.Image = "rbxassetid://15543026117" -- High quality frost noise
-		noise.ImageTransparency = Library.CurrentTheme.NoiseTransparency or 0.94
+		noise.ImageTransparency = theme.NoiseTransparency or 0.94
 		noise.ImageColor3 = Color3.fromRGB(255, 255, 255)
 		noise.ScaleType = Enum.ScaleType.Tile
 		noise.TileSize = UDim2.fromOffset(256, 256)
@@ -67,8 +67,8 @@ local Library = {
 			local depth = Instance.new("Frame")
 			depth.Name = "GlassDepth"
 			depth.Size = UDim2.fromScale(1, 1)
-			depth.BackgroundColor3 = Library.CurrentTheme.Main
-			depth.BackgroundTransparency = Library.CurrentTheme.SlotTransparency.Main or 0.45
+			depth.BackgroundColor3 = theme.Main
+			depth.BackgroundTransparency = theme.SlotTransparency.Main or 0.45
 			depth.ZIndex = -1
 			depth.Parent = glassContainer
 			if uic then uic:Clone().Parent = depth end
@@ -78,7 +78,7 @@ local Library = {
 			highlight.Name = "GlassHighlight"
 			highlight.Size = UDim2.fromScale(1, 1)
 			highlight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			highlight.BackgroundTransparency = 1 - (Library.CurrentTheme.HighlightIntensity or 0.08)
+			highlight.BackgroundTransparency = 1 - (theme.HighlightIntensity or 0.08)
 			highlight.ZIndex = 1
 			highlight.Parent = glassContainer
 			
@@ -99,7 +99,7 @@ local Library = {
 			depth.Name = "GlassDepthSecondary"
 			depth.Size = UDim2.fromScale(1, 1)
 			depth.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			depth.BackgroundTransparency = Library.CurrentTheme.SlotTransparency.Secondary or 0.8
+			depth.BackgroundTransparency = theme.SlotTransparency.Secondary or 0.8
 			depth.ZIndex = -1
 			depth.Parent = glassContainer
 			if uic then uic:Clone().Parent = depth end
@@ -242,7 +242,7 @@ function Library:change_theme(toTheme)
 			if property == "BackgroundColor3" and (theme == "Main" or theme == "Secondary") then
 				if toTheme.Glass then
 					if not rawget(element, "GlassContainer") then
-						local glassContainer = Library._glassBlur(element, theme == "Secondary")
+						local glassContainer = Library._glassBlur(element, theme == "Secondary", Library.CurrentTheme)
 						if glassContainer then
 							rawset(element, "GlassContainer", glassContainer)
 						end
@@ -531,7 +531,7 @@ function Library:object(class, properties)
 						if Library.CurrentTheme.Glass and (themeKey == "Main" or themeKey == "Secondary") then
 							localObject.BackgroundTransparency = 1 -- Hide the actual frame's background
 							local isSecondary = (themeKey == "Secondary")
-							local glassContainer = Library._glassBlur(methods, isSecondary)
+							local glassContainer = Library._glassBlur(methods, isSecondary, Library.CurrentTheme)
 							if glassContainer then
 								rawset(methods, "GlassContainer", glassContainer)
 							end
