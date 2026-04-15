@@ -30,6 +30,83 @@ local Mouse = LocalPlayer:GetMouse()
 local HTTPService = game:GetService("HttpService")
 
 local Library = {
+	_glassBlur = function(frame, isSecondary)
+		local isGlass = Library.CurrentTheme and Library.CurrentTheme.Glass
+		if not isGlass then return nil end
+
+		local glassContainer = Instance.new("Frame")
+		glassContainer.Name = "GlassBlurContainer"
+		glassContainer.Size = UDim2.fromScale(1, 1)
+		glassContainer.BackgroundTransparency = 1
+		glassContainer.ZIndex = -1
+		glassContainer.Parent = frame.AbsoluteObject
+
+		local uic = frame.AbsoluteObject:FindFirstChildOfClass("UICorner")
+		if uic then
+			uic:Clone().Parent = glassContainer
+		end
+
+		-- The "Frost" physical material (noise)
+		local noise = Instance.new("ImageLabel")
+		noise.Name = "GlassNoise"
+		noise.Size = UDim2.fromScale(1, 1)
+		noise.BackgroundTransparency = 1
+		noise.Image = "rbxassetid://15543026117" -- High quality frost noise
+		noise.ImageTransparency = Library.CurrentTheme.NoiseTransparency or 0.94
+		noise.ImageColor3 = Color3.fromRGB(255, 255, 255)
+		noise.ScaleType = Enum.ScaleType.Tile
+		noise.TileSize = UDim2.fromOffset(256, 256)
+		noise.ZIndex = 0
+		noise.Parent = glassContainer
+		if uic then uic:Clone().Parent = noise end
+
+		-- Sophisticated Layering: prevent "double darkening" by using CanvasGroup with GroupTransparency
+		-- or using a purely additive highlight for inner frames.
+		if not isSecondary then
+			-- For Main panels, add the physical depth
+			local depth = Instance.new("Frame")
+			depth.Name = "GlassDepth"
+			depth.Size = UDim2.fromScale(1, 1)
+			depth.BackgroundColor3 = Library.CurrentTheme.Main
+			depth.BackgroundTransparency = Library.CurrentTheme.SlotTransparency.Main or 0.45
+			depth.ZIndex = -1
+			depth.Parent = glassContainer
+			if uic then uic:Clone().Parent = depth end
+			
+			-- Add a subtle inner light (UIGradient) to simulate glass edges instead of a stroke
+			local highlight = Instance.new("Frame")
+			highlight.Name = "GlassHighlight"
+			highlight.Size = UDim2.fromScale(1, 1)
+			highlight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			highlight.BackgroundTransparency = 1 - (Library.CurrentTheme.HighlightIntensity or 0.08)
+			highlight.ZIndex = 1
+			highlight.Parent = glassContainer
+			
+			local gradient = Instance.new("UIGradient")
+			gradient.Rotation = 45
+			gradient.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 150, 150)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 200))
+			})
+			gradient.Parent = highlight
+			
+			if uic then uic:Clone().Parent = highlight end
+		else
+			-- For Secondary panels, we don't want to double darken. 
+			-- We use a very light tint and stronger highlight to simulate stacked glass.
+			local depth = Instance.new("Frame")
+			depth.Name = "GlassDepthSecondary"
+			depth.Size = UDim2.fromScale(1, 1)
+			depth.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			depth.BackgroundTransparency = Library.CurrentTheme.SlotTransparency.Secondary or 0.8
+			depth.ZIndex = -1
+			depth.Parent = glassContainer
+			if uic then uic:Clone().Parent = depth end
+		end
+
+		return glassContainer
+	end,
 	Themes = {
 		Legacy = {
 			Main = Color3.fromHSV(262/360, 60/255, 34/255),
@@ -88,15 +165,18 @@ local Library = {
 			WeakText = Color3.fromHSV(0, 0, 172/255)
 		},
 		Frost = {
-			Main = Color3.fromRGB(20, 26, 38),
-			Secondary = Color3.fromRGB(44, 54, 78),
-			Tertiary = Color3.fromRGB(120, 255, 214),
-			StrongText = Color3.fromRGB(242, 248, 255),
-			WeakText = Color3.fromRGB(150, 168, 200),
+			Main = Color3.fromRGB(240, 245, 255),
+			Secondary = Color3.fromRGB(255, 255, 255),
+			Tertiary = Color3.fromRGB(150, 200, 255),
+			StrongText = Color3.fromRGB(255, 255, 255),
+			WeakText = Color3.fromRGB(200, 210, 230),
 			SlotTransparency = {
-				Main = 0.25,   
-				Secondary = 0.4, 
+				Main = 0.45,
+				Secondary = 0.55,
 			},
+			Glass = true,
+			NoiseTransparency = 0.94,
+			HighlightIntensity = 0.08
 		},
 		VisualStudio = {}
 	},
@@ -157,6 +237,29 @@ function Library:change_theme(toTheme)
 				modifiedColor = Library:lighten(themeColor, colorAlter)
 			end
 			element:tween{[property] = modifiedColor}
+			
+			-- Handle dynamic glass container creation/destruction
+			if property == "BackgroundColor3" and (theme == "Main" or theme == "Secondary") then
+				if toTheme.Glass then
+					if not rawget(element, "GlassContainer") then
+						local glassContainer = Library._glassBlur(element, theme == "Secondary")
+						if glassContainer then
+							rawset(element, "GlassContainer", glassContainer)
+						end
+						element.AbsoluteObject.BackgroundTransparency = 1
+					end
+				else
+					if rawget(element, "GlassContainer") then
+						rawget(element, "GlassContainer"):Destroy()
+						rawset(element, "GlassContainer", nil)
+					end
+				end
+			end
+			
+			-- Hide strokes in glass mode
+			if element.AbsoluteObject:IsA("UIStroke") then
+				element.AbsoluteObject.Enabled = not toTheme.Glass
+			end
 		end
 	end
 	local st = toTheme.SlotTransparency
@@ -167,7 +270,11 @@ function Library:change_theme(toTheme)
 	end
 	if Library.mainFrame then
 		local mainTrans = (st and st.Main ~= nil) and st.Main or 0
-		Library.mainFrame:tween({BackgroundTransparency = mainTrans})
+		if not toTheme.Glass then
+			Library.mainFrame:tween({BackgroundTransparency = mainTrans})
+		else
+			Library.mainFrame:tween({BackgroundTransparency = 1})
+		end
 	end
 end
 
@@ -199,11 +306,44 @@ function Library:object(class, properties)
 		}, options)
 		callback = callback or function() return end
 
-
 		local ti = TweenInfo.new(options.Length, options.Style, options.Direction)
 		options.Length = nil
 		options.Style = nil 
 		options.Direction = nil
+
+		-- Intercept BackgroundColor3 tweens for Glass theme elements
+		if rawget(methods, "GlassContainer") then
+			local depth = rawget(methods, "GlassContainer"):FindFirstChild("GlassDepth") or rawget(methods, "GlassContainer"):FindFirstChild("GlassDepthSecondary")
+			local noise = rawget(methods, "GlassContainer"):FindFirstChild("GlassNoise")
+			local highlight = rawget(methods, "GlassContainer"):FindFirstChild("GlassHighlight")
+			
+			if options.BackgroundColor3 and depth then
+				TweenService:Create(depth, ti, {BackgroundColor3 = options.BackgroundColor3}):Play()
+			end
+			
+			if options.BackgroundTransparency then
+				-- Map transparency to the glass elements
+				local baseTrans = options.BackgroundTransparency
+				if depth then
+					local slotTrans = Library.CurrentTheme.SlotTransparency and Library.CurrentTheme.SlotTransparency[depth.Name == "GlassDepth" and "Main" or "Secondary"] or 0.8
+					-- Scale the transparency so 1 is fully transparent, 0 is the slot transparency
+					local newDepthTrans = slotTrans + (1 - slotTrans) * baseTrans
+					TweenService:Create(depth, ti, {BackgroundTransparency = newDepthTrans}):Play()
+				end
+				if noise then
+					local noiseTrans = Library.CurrentTheme.NoiseTransparency or 0.94
+					local newNoiseTrans = noiseTrans + (1 - noiseTrans) * baseTrans
+					TweenService:Create(noise, ti, {ImageTransparency = newNoiseTrans}):Play()
+				end
+				if highlight then
+					local highlightIntensity = Library.CurrentTheme.HighlightIntensity or 0.08
+					local newHighlightTrans = (1 - highlightIntensity) + highlightIntensity * baseTrans
+					TweenService:Create(highlight, ti, {BackgroundTransparency = newHighlightTrans}):Play()
+				end
+				-- Keep the actual element invisible
+				options.BackgroundTransparency = 1
+			end
+		end
 
 		local tween = TweenService:Create(localObject, ti, options); tween:Play()
 
@@ -278,7 +418,8 @@ function Library:object(class, properties)
 		strokeMode = strokeMode or Enum.ApplyStrokeMode.Border
 		local stroke = self:object("UIStroke", {
 			ApplyStrokeMode = strokeMode,
-			Thickness = thickness
+			Thickness = thickness,
+			Enabled = not (Library.CurrentTheme and Library.CurrentTheme.Glass)
 		})
 
 		if type(color) == "table" then
@@ -376,12 +517,25 @@ function Library:object(class, properties)
 				localObject[property] = modifiedColor
 				table.insert(self.ThemeObjects[themeKey], {methods, property, themeKey, colorAlter})
 				if property == "BackgroundColor3" then
-					if properties.BackgroundTransparency == nil and not localObject:IsA("GuiButton") and not localObject:IsA("TextBox") then
+					if properties.BackgroundTransparency == nil then
 						local slotTrans = Library.CurrentTheme.SlotTransparency
 						if slotTrans and slotTrans[themeKey] ~= nil then
-							localObject.BackgroundTransparency = slotTrans[themeKey]
+							if not localObject:IsA("GuiButton") and not localObject:IsA("TextBox") then
+								localObject.BackgroundTransparency = slotTrans[themeKey]
+							end
 						end
-						table.insert(Library.ThemeTransparencyObjects, {methods, themeKey})
+						if not localObject:IsA("GuiButton") and not localObject:IsA("TextBox") then
+							table.insert(Library.ThemeTransparencyObjects, {methods, themeKey})
+						end
+						
+						if Library.CurrentTheme.Glass and (themeKey == "Main" or themeKey == "Secondary") then
+							localObject.BackgroundTransparency = 1 -- Hide the actual frame's background
+							local isSecondary = (themeKey == "Secondary")
+							local glassContainer = Library._glassBlur(methods, isSecondary)
+							if glassContainer then
+								rawset(methods, "GlassContainer", glassContainer)
+							end
+						end
 					end
 				end
 			end
@@ -615,7 +769,9 @@ function Library:create(options)
 		core.ClipsDescendants = false
 		local st = Library.CurrentTheme.SlotTransparency
 		if st and st.Main ~= nil then
-			core.AbsoluteObject.BackgroundTransparency = st.Main
+			if not (Library.CurrentTheme and Library.CurrentTheme.Glass) then
+				core.AbsoluteObject.BackgroundTransparency = st.Main
+			end
 		end
 	end)
 
@@ -820,7 +976,9 @@ function Library:create(options)
 	do
 		local st = Library.CurrentTheme.SlotTransparency
 		if st and st.Secondary ~= nil then
-			content.AbsoluteObject.BackgroundTransparency = st.Secondary
+			if not (Library.CurrentTheme and Library.CurrentTheme.Glass) then
+				content.AbsoluteObject.BackgroundTransparency = st.Secondary
+			end
 		end
 	end
 
