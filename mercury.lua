@@ -88,11 +88,11 @@ local Library = {
 			WeakText = Color3.fromHSV(0, 0, 172/255)
 		},
 		Frost = {
-			Main = Color3.fromRGB(18, 24, 36),
-			Secondary = Color3.fromRGB(42, 52, 72),
-			Tertiary = Color3.fromRGB(118, 214, 255),
-			StrongText = Color3.fromRGB(246, 250, 255),
-			WeakText = Color3.fromRGB(148, 162, 192),
+			Main = Color3.fromRGB(20, 26, 38),
+			Secondary = Color3.fromRGB(44, 54, 78),
+			Tertiary = Color3.fromRGB(120, 255, 214),
+			StrongText = Color3.fromRGB(242, 248, 255),
+			WeakText = Color3.fromRGB(150, 168, 200),
 			SlotTransparency = {
 				Main = 0.25,   
 				Secondary = 0.4, 
