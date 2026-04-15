@@ -376,9 +376,11 @@ function Library:object(class, properties)
 				localObject[property] = modifiedColor
 				table.insert(self.ThemeObjects[themeKey], {methods, property, themeKey, colorAlter})
 				if property == "BackgroundColor3" then
-					local slotTrans = Library.CurrentTheme.SlotTransparency
-					if slotTrans and slotTrans[themeKey] ~= nil then
-						localObject.BackgroundTransparency = slotTrans[themeKey]
+					if properties.BackgroundTransparency == nil and not localObject:IsA("GuiButton") and not localObject:IsA("TextBox") then
+						local slotTrans = Library.CurrentTheme.SlotTransparency
+						if slotTrans and slotTrans[themeKey] ~= nil then
+							localObject.BackgroundTransparency = slotTrans[themeKey]
+						end
 						table.insert(Library.ThemeTransparencyObjects, {methods, themeKey})
 					end
 				end
@@ -2986,7 +2988,8 @@ function Library:credit(options)
 
 	local creditContainer = (self.creditsContainer or self.container):object("Frame", {
 		Theme = {BackgroundColor3 = "Secondary"},
-		Size = UDim2.new(1, -20, 0, 52)
+		Size = UDim2.new(1, -20, 0, 52),
+		BackgroundTransparency = 0
 	}):round(7)
 
 	local name = creditContainer:object("TextLabel", {
